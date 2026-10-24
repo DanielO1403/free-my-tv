@@ -365,6 +365,33 @@ var TV = (function () {
       });
     },
 
+    /** Samsung: whether the TV reports a live signal on this input (false when it can't tell). */
+    sourceLive: function (type, number, done) {
+      if (!samsung) { setTimeout(function () { done(false); }, 0); return; }
+      samsungSources(function (sources) {
+        for (var i = 0; sources && i < sources.length; i++) {
+          if (sources[i].type === type && sources[i].number === number) { done(true); return; }
+        }
+        done(false);
+      });
+    },
+
+    /** Samsung: whether this launch came from the startup service (tizen/service/boot.js). */
+    launchedAtBoot: function () {
+      if (!samsung) return false;
+      try {
+        var req = window.tizen.application.getCurrentApplication().getRequestedAppControl();
+        var data = (req && req.appControl && req.appControl.data) || [];
+        for (var i = 0; i < data.length; i++) if (data[i].key === 'fmtv' && data[i].value[0] === 'boot') return true;
+      } catch (e) {}
+      return false;
+    },
+
+    /** Samsung: steps aside so the TV shows what's behind it (the input it's on). */
+    hide: function () {
+      try { window.tizen.application.getCurrentApplication().hide(); } catch (e) {}
+    },
+
     /** The antenna and HDMI inputs; `connected` when the TV says a device is on (when it tells). */
     inputs: function (done) {
       if (samsung) { samsungInputs(done); return; }

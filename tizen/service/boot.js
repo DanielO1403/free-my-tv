@@ -13,7 +13,13 @@ var timer = null, last = 0;
 
 function open() {
   try {
-    tizen.application.launch(APP, function () {}, function (e) { console.log('Free My TV: launch failed ' + e.message); });
+    // The 'boot' flag lets the home screen step aside when the Xbox is what woke the TV (web/home.js, xboxCheck).
+    var control = new tizen.ApplicationControl('http://tizen.org/appcontrol/operation/default', null, null, null,
+        [new tizen.ApplicationControlData('fmtv', ['boot'])]);
+    tizen.application.launchAppControl(control, APP, function () {}, function (e) {
+      console.log('Free My TV: launch failed ' + e.message);
+      tizen.application.launch(APP);
+    });
   } catch (e) {
     console.log('Free My TV: launch threw ' + e.message);
   }

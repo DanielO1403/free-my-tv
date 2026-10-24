@@ -1148,7 +1148,17 @@
     checkNight();
   });
 
+  /**
+   * Opened by the startup service while the Xbox (HDMI 3) is on: the Xbox woke the TV (HDMI-CEC), so step aside and
+   * leave its picture on screen. With the Xbox off, HDMI 3 has no signal and the home screen stays.
+   */
+  function xboxCheck() {
+    if (!TV.launchedAtBoot()) return;
+    TV.sourceLive('HDMI', 3, function (live) { if (live) TV.hide(); });
+  }
+
   function reopened() {
+    xboxCheck();
     // LG: with handlesRelaunch the app has to come to the front itself, or opening it again while it runs shows nothing.
     if (window.PalmSystem && window.PalmSystem.activate) window.PalmSystem.activate();
     reset();
@@ -1175,6 +1185,7 @@
   // LG's screensaver waits only when ours will show: not under a sheet (ours waits there), and not without photos.
   TV.holdScreenSaver(function () { return !sheetOpen() && saverPhotos().length > 0; });
   fit();
+  xboxCheck();
   renderTop();
   tickClock();
   loadApps(function () {
