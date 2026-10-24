@@ -387,6 +387,29 @@ var TV = (function () {
       return false;
     },
 
+    /**
+     * Samsung: starts the startup service (tizen/service/boot.js) and reports, in words, whether it's running:
+     * done(text). A TV that refuses background services answers here.
+     */
+    bootService: function (done) {
+      if (!samsung) return;
+      var id = 'FreeMyTVio.Boot';
+      function check() {
+        try {
+          window.tizen.application.getAppsContext(function (list) {
+            for (var i = 0; i < list.length; i++) if (list[i].appId === id) { done('Arranque automático: activo'); return; }
+            done('Arranque automático: el servicio se cerró al iniciar');
+          }, function (e) { done('Arranque automático: no se pudo revisar (' + e.message + ')'); });
+        } catch (e) { done('Arranque automático: no se pudo revisar (' + e.message + ')'); }
+      }
+      try {
+        window.tizen.application.launch(id, function () { setTimeout(check, 2000); },
+            function (e) { done('Arranque automático: el TV no lo permite (' + e.name + ': ' + e.message + ')'); });
+      } catch (e) {
+        done('Arranque automático: el TV no lo permite (' + e.message + ')');
+      }
+    },
+
     /** Samsung: steps aside so the TV shows what's behind it (the input it's on). */
     hide: function () {
       try { window.tizen.application.getCurrentApplication().hide(); } catch (e) {}

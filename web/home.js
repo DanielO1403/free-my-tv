@@ -1176,9 +1176,7 @@
 
   // Samsung: start the background service that opens this home screen when the TV turns on (tizen/service), in case
   // the TV didn't start it at boot. It keeps running after this.
-  if (TV.name === 'tizen') {
-    try { window.tizen.application.launch('FreeMyTVio.Boot', function () {}, function () {}); } catch (e) {}
-  }
+  if (TV.name === 'tizen') TV.bootService(function (text) { toast(text); });
 
   I18N.set(Prefs.language());
   checkNight();   // now, from the last forecast: not after the TV lists its apps, with the day look until then

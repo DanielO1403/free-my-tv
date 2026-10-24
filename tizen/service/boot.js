@@ -6,7 +6,7 @@
  */
 var APP = 'FreeMyTVio.FreeMyTV';
 var TICK = 5000;      // how often the service checks the clock
-var SLEPT = 30000;    // a gap this long between ticks means the TV was asleep
+var SLEPT = 15000;    // a gap this long (3 missed ticks) between ticks means the TV was asleep
 var DELAY = 4000;     // after waking, give the TV's own start screen a moment before opening ours
 
 var timer = null, last = 0;
