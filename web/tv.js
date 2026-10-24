@@ -388,26 +388,47 @@ var TV = (function () {
     },
 
     /**
-     * Samsung: starts the startup service (tizen/service/boot.js) and reports, in words, whether it's running:
-     * done(text). A TV that refuses background services answers here.
+     * Samsung: makes sure the startup service (tizen/service/boot.js) runs, starting it the way TizenBrew starts its
+     * own (an app control with the "service" operation), and reports in words what happened: done(text).
      */
     bootService: function (done) {
       if (!samsung) return;
-      var id = 'FreeMyTVio.Boot';
-      function check() {
+      function status(next) {
+        var x = new XMLHttpRequest(), over = false;
+        function end(v) { if (!over) { over = true; next(v); } }
         try {
-          window.tizen.application.getAppsContext(function (list) {
-            for (var i = 0; i < list.length; i++) if (list[i].appId === id) { done('Arranque automático: activo'); return; }
-            done('Arranque automático: el servicio se cerró al iniciar');
-          }, function (e) { done('Arranque automático: no se pudo revisar (' + e.message + ')'); });
-        } catch (e) { done('Arranque automático: no se pudo revisar (' + e.message + ')'); }
+          x.open('GET', 'http://127.0.0.1:8093/', true);
+          x.timeout = 1500;
+          x.onload = function () { try { end(JSON.parse(x.responseText)); } catch (e) { end(null); } };
+          x.onerror = x.ontimeout = function () { end(null); };
+          x.send();
+        } catch (e) { end(null); }
       }
-      try {
-        window.tizen.application.launch(id, function () { setTimeout(check, 2000); },
-            function (e) { done('Arranque automático: el TV no lo permite (' + e.name + ': ' + e.message + ')'); });
-      } catch (e) {
-        done('Arranque automático: el TV no lo permite (' + e.message + ')');
+      function report(s) {
+        if (!s) return false;
+        done('Arranque automático: activo · encendidos detectados: ' + s.wakes + ' · aperturas: ' + s.launches +
+            (s.error ? ' · error: ' + s.error : ''));
+        return true;
       }
+      status(function (s) {
+        if (report(s)) return;
+        var answered = false;
+        setTimeout(function () { if (!answered) done('Arranque automático: el TV no respondió al iniciar el servicio'); }, 8000);
+        try {
+          window.tizen.application.launchAppControl(
+              new window.tizen.ApplicationControl('http://tizen.org/appcontrol/operation/service'), 'FreeMyTVio.Boot',
+              function () {
+                answered = true;
+                setTimeout(function () {
+                  status(function (s2) { if (!report(s2)) done('Arranque automático: iniciado, pero no responde'); });
+                }, 2500);
+              },
+              function (e) { answered = true; done('Arranque automático: el TV no lo permite (' + e.name + ': ' + e.message + ')'); });
+        } catch (e) {
+          answered = true;
+          done('Arranque automático: el TV no lo permite (' + e.message + ')');
+        }
+      });
     },
 
     /** Samsung: steps aside so the TV shows what's behind it (the input it's on). */
