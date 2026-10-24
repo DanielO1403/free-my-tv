@@ -1157,6 +1157,20 @@
     TV.sourceLive('HDMI', 3, function (live) { if (live) TV.hide(); });
   }
 
+  /**
+   * Xbox on HDMI 3: while this home screen is on screen, watch that input; when it goes from no signal to a signal
+   * (the console was turned on), switch the TV to it. Samsung lists an HDMI device in standby as disconnected.
+   */
+  var xboxLive = null;
+  function watchXbox() {
+    if (TV.name !== 'tizen' || document.hidden) { xboxLive = null; return; }
+    TV.sourceLive('HDMI', 3, function (live) {
+      if (xboxLive === false && live) launcher('source:HDMI:3', 'Xbox')();
+      xboxLive = live;
+    });
+  }
+  setInterval(watchXbox, 3000);
+
   function reopened() {
     xboxCheck();
     // LG: with handlesRelaunch the app has to come to the front itself, or opening it again while it runs shows nothing.
