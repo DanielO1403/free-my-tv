@@ -255,39 +255,48 @@
     }
   }
 
+  /** A dock tile: the service's white logo on the dark glass (its name when there's no logo), dimmed when missing. */
+  function dockFace(item, box) {
+    setClass(box, 'off', !item.app);
+    if (DOCK_LOGOS[item.dock]) {
+      var img = el('img', 'bw', box);
+      img.src = 'icons/bw-' + item.dock + '.svg';
+    } else el('div', 'word', box, item.title);
+  }
+
   var apps = [], shelf = [], others = [], inputs = [];
 
-  /** shelf_apps in config.properties: the shelf in that order, by id or name (part of it). */
-  var WANTED = (CONFIG.shelfApps || []).map(function (s) { return s.toLowerCase(); });
+  // The black-and-white dock: these services, in this order, each with a white logo (icons/bw-<key>.svg, Simple Icons,
+  // CC0). Xbox isn't an app: it puts the TV on HDMI 3, and Anynet+ (HDMI-CEC) wakes the console.
+  var DOCK = [
+    ['youtube', 'YouTube', /youtube(?!kids)/i, /^youtube$/i],
+    ['netflix', 'Netflix', /netflix/i, /netflix/i],
+    ['xbox', 'Xbox', null, null, 'source:HDMI:3'],
+    ['prime', 'Prime Video', /primevideo|amazon/i, /prime video|amazon/i],
+    ['disney', 'Disney+', /disney/i, /disney/i],
+    ['paramount', 'Paramount+', /paramount|cbs/i, /paramount/i],
+    ['appletv', 'Apple TV', /appletv|apple\.tv/i, /apple tv/i],
+    ['spotify', 'Spotify', /spotify/i, /spotify/i]
+  ];
+  var DOCK_LOGOS = {youtube: 1, netflix: 1, xbox: 1, prime: 1, paramount: 1, appletv: 1, spotify: 1};
 
   function pickShelf() {
-    if (WANTED.length && Prefs.shelfConfig() !== WANTED.join(',')) {
-      Prefs.set('shelf', null);
-      Prefs.set('shelfConfig', WANTED.join(','));
-    }
-    var chosen = Prefs.shelf(), out = [];
-    if (chosen) {
-      for (var i = 0; i < chosen.length; i++) {
-        for (var j = 0; j < apps.length; j++) if (apps[j].id === chosen[i]) out.push(apps[j]);
-      }
-    } else if (WANTED.length) {
-      for (var w = 0; w < WANTED.length; w++) {
-        for (var k = 0; k < apps.length; k++) {
-          var id = apps[k].id.toLowerCase(), title = apps[k].title.toLowerCase();
-          if ((id.indexOf(WANTED[w]) >= 0 || title.indexOf(WANTED[w]) >= 0) && out.indexOf(apps[k]) < 0) { out.push(apps[k]); break; }
+    var out = [];
+    for (var d = 0; d < DOCK.length; d++) {
+      var spec = DOCK[d], found = null;
+      if (spec[4]) found = {id: spec[4], title: spec[1]};
+      else {
+        for (var a = 0; a < apps.length && !found; a++) {
+          if (spec[2].test(apps[a].id) || spec[3].test(apps[a].title)) found = apps[a];
         }
       }
-      if (!out.length) out = apps.slice(0, FEW_APPS);
-    } else {
-      for (var s = 0; s < SHELF.length && out.length < FEW_APPS; s++) {
-        for (var a = 0; a < apps.length; a++) {
-          if ((SHELF[s][1].test(apps[a].id) || SHELF[s][2].test(apps[a].title)) && out.indexOf(apps[a]) < 0) { out.push(apps[a]); break; }
-        }
-      }
-      if (!out.length) out = apps.slice(0, FEW_APPS);
+      out.push({id: found ? found.id : '', title: spec[1], dock: spec[0], app: found});
     }
     shelf = out;
-    others = apps.filter(function (x) { return shelf.indexOf(x) < 0; });
+    others = apps.filter(function (x) {
+      for (var i = 0; i < shelf.length; i++) if (shelf[i].app === x) return false;
+      return true;
+    });
   }
 
   // MARK: - Focus
@@ -306,7 +315,7 @@
       setClass(list[i], 'focus', st.zone === Z.TOP && st.top === i);
     }
     list = $('buttons').children;
-    for (i = 0; i < list.length; i++) setClass(list[i], 'focus', st.zone === Z.TOP && st.top === 3 + i);
+    for (i = 0; i < list.length; i++) setClass(list[i], 'focus', st.zone === Z.TOP && st.top === 5);
     setClass($('quotes'), 'hide', st.zone === Z.TOP && st.top >= 3);
     list = $('cards').children;
     for (i = 0; i < list.length; i++) setClass(list[i], 'focus', st.zone === Z.CARDS && st.card === i);
@@ -352,27 +361,17 @@
 
   // MARK: - Top: title, tabs, buttons, quotes
 
-  var TAB_KIND = [null, 'movie', 'tv'];
-
   function renderTop() {
-    $('title').textContent = tr('For You');
-    var tabs = $('tabs');
-    tabs.innerHTML = '';
-    var names = [tr('Explore'), tr('Movies'), tr('Shows')];
-    for (var i = 0; i < 3; i++) {
-      var t = el('button', 'tab', tabs, names[i]);
-      hover(t, Z.TOP, i);
-    }
+    // Black-and-white home: no title or tabs, only Free My TV's settings at the top right.
+    $('title').textContent = '';
+    $('tabs').innerHTML = '';
     var buttons = $('buttons');
     buttons.innerHTML = '';
-    var defs = [['live_tv', tr('light|Live TV')], ['hdmi', tr('HDMI Inputs')], ['settings', tr('light|Settings')]];
-    for (var b = 0; b < 3; b++) {
-      var r = el('button', 'round' + (b === 2 ? ' last' : ''), buttons);
-      r.style.left = (1596 + 88 * b) + 'px';
-      sym(defs[b][0], r);
-      el('div', 'tip', r, defs[b][1]);
-      hover(r, Z.TOP, 3 + b);
-    }
+    var r = el('button', 'round last', buttons);
+    r.style.left = '1772px';
+    sym('settings', r);
+    el('div', 'tip', r, tr('Home Settings'));
+    hover(r, Z.TOP, 5);
   }
 
   function renderQuotes() {
@@ -388,7 +387,7 @@
   // MARK: - Picks and background
 
   function renderCards() {
-    var list = Data.picks(TAB_KIND[st.tab]);
+    var list = [];   // the black-and-white home has no picks
     var holder = $('cards');
     setClass(body, 'no-picks', !list.length);
     var same = list.length === cards.length;
@@ -475,7 +474,7 @@
       t.style.top = (854 + 126 - th) + 'px';
       t.style.width = tw + 'px';
       t.style.height = th + 'px';
-      face(shelf[i], t, wordFit(shelf[i].title, tw, 30));
+      dockFace(shelf[i], t);
       hover(t, Z.SHELF, i);
     }
     // More apps than fit: a small arrow inside the glass's edge on each side that has more, where no tile reaches
@@ -552,7 +551,23 @@
     updateFocus();
   }
 
+  /** Top center: the city and the next 6 hours. */
+  function renderWxBar() {
+    var bar = $('wxbar'), w = Data.weather;
+    bar.innerHTML = '';
+    setClass(bar, 'empty', !w || !w.hours.length);
+    if (!w) return;
+    el('div', 'city', bar, Data.city || tr('Weather'));
+    for (var i = 0; i < w.hours.length && i < 6; i++) {
+      var h = el('div', 'hour', bar), x = w.hours[i];
+      el('div', 't', h, Data.hour(x.at));
+      sym(Data.symbol(x.code, x.day), h);
+      el('div', 'd', h, Data.degrees(x.temp));
+    }
+  }
+
   function renderPanels() {
+    renderWxBar();
     var d = $('drawer');
     var old = d.querySelectorAll('.panel');
     for (var o = 0; o < old.length; o++) d.removeChild(old[o]);
@@ -670,15 +685,13 @@
   // MARK: - Home Settings
 
   function settingRows() {
-    var unit = Prefs.temperature(), theme = Prefs.theme();
+    var unit = Prefs.temperature();
     var auto = tr('Automatic'), picked = pickedLanguage();
     var rows = [
       {label: tr('Language'), value: picked === 'auto' ? auto : I18N.languageName(picked), opens: true, language: true,
         step: function (d) { if (d >= 0) openLanguages(); }},
       {label: tr('Temperature'), value: unit === 'C' ? '°C' : unit === 'F' ? '°F' : tr('unit|Automatic'),
         step: function (d) { cycle('temperature', ['auto', 'C', 'F'], unit, d); renderPanels(); }},
-      {label: tr('Theme'), value: theme === 'light' ? tr('Light') : theme === 'dark' ? tr('Dark') : auto,
-        step: function (d) { cycle('theme', ['auto', 'light', 'dark'], theme, d); checkNight(); }},
       {label: tr('Weather widget'), toggle: Prefs.weather(),
         step: function () { Prefs.set('weather', !Prefs.weather()); renderPanels(); }},
       {label: tr('Quotes widget'), toggle: Prefs.quotes(),
@@ -692,7 +705,6 @@
           step: function () { if (Prefs.quotes()) { Prefs.setCoin(i, !Prefs.coin(i)); Data.settingsChanged(); } }});
       })(i);
     }
-    rows.push({label: tr('Shelf'), value: '›', step: function (d) { if (d >= 0) openShelfEdit(); }});
     rows.push({label: tr('TV Settings'), value: '›', step: function (d) { if (d >= 0) tvSettings(); }});
     return rows;
   }
@@ -882,7 +894,9 @@
         if (app) launcher(app.id, app.title)();
         return;
       case Z.SHELF:
-        if (shelf[st.shelf]) launcher(shelf[st.shelf].id, shelf[st.shelf].title)();
+        var item = shelf[st.shelf];
+        if (item && item.id) launcher(item.id, item.title)();
+        else if (item) toast(trf("Couldn't open {app}.", {app: item.title}));
         return;
       case Z.DRAWER:
         if (drawerItems[st.drawer]) drawerItems[st.drawer].run();
@@ -915,8 +929,8 @@
         if (dx) st.shelf = Math.max(0, Math.min(shelf.length - 1, st.shelf + dx));
         else if (dy > 0) { openDrawer(); return; }
         else if (dy < 0) {
-          if (cards.length) { st.zone = Z.CARDS; st.card = nearest(cardNodes, centerX(tiles[st.shelf])); }
-          else { st.zone = Z.TOP; st.top = st.tab; }
+          st.zone = Z.TOP;
+          st.top = 5;
         }
         break;
       case Z.CARDS:
@@ -925,13 +939,7 @@
         else if (shelf.length) { st.zone = Z.SHELF; st.shelf = nearest(tiles, centerX(cardNodes[st.card])); }
         break;
       case Z.TOP:
-        if (dx) {
-          st.top = Math.max(0, Math.min(5, st.top + dx));
-          if (st.top < 3) selectTab(st.top);   // as on Apple TV: focusing a tab selects it
-        } else if (dy > 0) {
-          if (cards.length) { st.zone = Z.CARDS; st.card = Math.min(cards.length - 1, st.top < 3 ? 0 : cards.length - 1); }
-          else st.zone = Z.SHELF;
-        }
+        if (dy > 0) st.zone = Z.SHELF;
         break;
       case Z.DRAWER:
         if (dx) st.drawer = Math.max(0, Math.min(drawerItems.length - 1, st.drawer + dx));
@@ -1005,11 +1013,11 @@
   var lastNight = null;
 
   function checkNight() {
-    var night = Data.isNight(Date.now());
+    var night = true;   // the black-and-white home is always dark
     setClass(body, 'night', night);
     if (night === lastNight) return;
     lastNight = night;
-    document.documentElement.style.background = night ? '#0B0B0D' : '';
+    document.documentElement.style.background = '#000';
     try { localStorage.setItem('fmtv.night', night ? 'true' : 'false'); } catch (e) {}   // for index.html, next start
   }
 
@@ -1155,6 +1163,12 @@
     idleAt = Date.now();
     loadApps(function () { renderShelf(); renderDrawer(); updateFocus(); Data.refresh(); });
   });
+
+  // Samsung: start the background service that opens this home screen when the TV turns on (tizen/service), in case
+  // the TV didn't start it at boot. It keeps running after this.
+  if (TV.name === 'tizen') {
+    try { window.tizen.application.launch('FreeMyTVio.Boot', function () {}, function () {}); } catch (e) {}
+  }
 
   I18N.set(Prefs.language());
   checkNight();   // now, from the last forecast: not after the TV lists its apps, with the day look until then

@@ -5,13 +5,14 @@
 <meta name="viewport" content="width=1920, height=1080">
 <title>Free My TV</title>
 <link rel="stylesheet" href="home.css">
+<link rel="stylesheet" href="bw.css">
 </head>
 <body>
 <script>
   // The look the home screen last had, before anything is drawn, so a night start doesn't flash the day one first.
   try {
     if (localStorage.getItem('fmtv.night') === 'true') {
-      document.documentElement.style.background = '#0B0B0D';
+      document.documentElement.style.background = '#000';
       document.body.className = 'night';
     }
   } catch (e) {}
@@ -32,6 +33,7 @@
       <div id="quotes"></div>
       <div id="buttons"></div>
       <div id="cards"></div>
+      <div id="wxbar" class="empty"></div>
       <div id="clock"><span class="time"></span><span class="date"></span></div>
     </div>
     <div id="platter"></div>
