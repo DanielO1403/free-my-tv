@@ -92,7 +92,7 @@ On Samsung it's an app too (2017 and newer, Tizen 3+), installed through Samsung
 screen stays unless the optional native Home assignment below is used. Two ways:
 
 - **The release, no tools:** TizenBrew Installer (github.com/reisxd/TizenBrewInstaller) installs the latest GitHub
-  release when they type `simbasjungles/free-my-tv`, and on 2023+ TVs signs it with their Samsung account. That build
+  release when they type `DanielO1403/free-my-tv`, and on 2023+ TVs signs it with their Samsung account. That build
   has no TMDB key (no picks) and takes the city from the TV's time zone. Walk them through the README's steps.
 - **Their own build** (their city, their TMDB key), below.
 

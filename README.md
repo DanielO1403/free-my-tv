@@ -104,7 +104,7 @@ You need a Samsung TV from 2017 or newer (Tizen 3+) and a computer on the same W
 
 1. **On the TV**, open **Apps** and type `1 2 3 4 5` on the remote. Turn **Developer mode** on, type your computer's IP address in **Host PC IP**, and restart the TV.
 2. **On your computer**, download [TizenBrew Installer](https://github.com/reisxd/TizenBrewInstaller/releases/latest), the community's installer for Samsung TVs, open it and connect to your TV.
-3. **Install from GitHub:** type `simbasjungles/free-my-tv`. On 2023 and newer TVs it asks you to sign in to your Samsung account once, to sign the app for your TV. To install your own build instead, choose **Custom WGT** in TizenBrew Installer and pick `FreeMyTV-tizen.wgt`; it signs that for your TV too.
+3. **Install from GitHub:** type `DanielO1403/free-my-tv`. On 2023 and newer TVs it asks you to sign in to your Samsung account once, to sign the app for your TV. To install the built file instead, choose **Select file to install** in TizenBrew Installer and pick `FreeMyTV-tizen.wgt`; it signs that for your TV too.
 4. **Straight to it:** in the TV's settings, under Start Screen Options, turn on **Autorun Last App**: the TV turns on into Free My TV. If your TV doesn't offer that, use the native Home assignment below.
 
 ### Home button and startup
