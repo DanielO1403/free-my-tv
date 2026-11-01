@@ -5,6 +5,9 @@ config.properties
 
 # Build output
 out/
+tizen/native-home/.state/
+tizen/native-home/obj/
+tizen/native-home/bin/
 *.apk
 *.ipk
 !docs/webos/FreeMyTV-webos-*.ipk

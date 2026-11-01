@@ -12,14 +12,26 @@
     <tizen:privilege name="http://tizen.org/privilege/internet"/>
     <tizen:privilege name="http://developer.samsung.com/privilege/network.public"/>
     <tizen:privilege name="http://tizen.org/privilege/application.launch"/>
+    <tizen:privilege name="http://tizen.org/privilege/application.info"/>
+    <tizen:privilege name="http://tizen.org/privilege/power"/>
     <tizen:privilege name="http://tizen.org/privilege/tv.inputdevice"/>
     <tizen:privilege name="http://tizen.org/privilege/tv.window"/>
     <tizen:profile name="tv-samsung"/>
-    <tizen:service id="FreeMyTVio.Boot">
+    <!-- The service asks the TV to start it at boot and to restart it if it stops. Some firmware disables both for
+         public certificates, so this is only a fallback: the native Home assignment (tizen/native-home) is what makes
+         the TV wake into Eden and makes the physical Home key return to it. Samsung's Store review rejects the
+         attributes too. -->
+    <tizen:service id="FreeMyTVio.Boot" type="ui" auto-restart="true" on-boot="true">
         <tizen:content src="service/boot.js"/>
         <tizen:name>Eden Boot</tizen:name>
         <tizen:icon src="icon.png"/>
         <tizen:description>Opens Eden when the TV turns on.</tizen:description>
     </tizen:service>
+    <!-- A private operation, so Eden never becomes the TV's handler for unrelated default launches. The boot service
+         uses it to bring an already-running Eden back to the front without reloading the page. -->
+    <tizen:app-control>
+        <tizen:src name="index.html" reload="disable"/>
+        <tizen:operation name="http://freemytv.io/appcontrol/operation/resume"/>
+    </tizen:app-control>
     <tizen:setting screen-orientation="landscape" context-menu="disable" background-support="enable" encryption="disable" install-location="auto" hwkey-event="enable"/>
 </widget>

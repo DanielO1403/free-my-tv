@@ -530,6 +530,7 @@
     drawerItems.push({label: tr('All Apps'), symbol: 'apps', run: openApps});
     drawerItems.push({label: tr('Home Settings'), symbol: 'settings', run: openSettings});
     drawerItems.push({label: tr('TV Settings'), symbol: 'tv_settings', run: tvSettings});
+    if (TV.name === 'tizen') drawerItems.push({label: tr('Samsung Home'), symbol: 'home', run: samsungHome});
     var n = drawerItems.length, gap = 18, groupGap = 56, groups = drawerInputs > 0 && drawerInputs < n ? 2 : 1;
     var tw = Math.min(230, (1760 - Math.max(0, n - groups) * gap - (groups - 1) * groupGap) / Math.max(1, n));
     var xPos = 80;
@@ -706,6 +707,7 @@
       })(i);
     }
     rows.push({label: tr('TV Settings'), value: '›', step: function (d) { if (d >= 0) tvSettings(); }});
+    if (TV.name === 'tizen') rows.push({label: tr('Startup check'), value: '›', step: function (d) { if (d >= 0) startupCheck(); }});
     return rows;
   }
 
@@ -873,6 +875,24 @@
   function tvSettings() {
     TV.settings(function (ok) {
       if (!ok) toast(tr("Couldn't open TV Settings"));
+    });
+  }
+
+  function samsungHome() {
+    TV.samsungHome(function (ok) {
+      if (!ok) toast(tr("Couldn't open Samsung Home"));
+    });
+  }
+
+  function startupCheck() {
+    if (TV.name !== 'tizen') { toast(tr('Startup check is for Samsung TVs.')); return; }
+    TV.bootService(function (r) {
+      if (r && r.on) {
+        toast(trf('Startup service: on · {wakes} wake-ups · {launches} launches',
+            {wakes: r.wakes, launches: r.launches}));
+      } else {
+        toast(trf("Couldn't start the startup service: {error}", {error: (r && r.error) || '?'}));
+      }
     });
   }
 
@@ -1190,7 +1210,7 @@
 
   // Samsung: start the background service that opens this home screen when the TV turns on (tizen/service), in case
   // the TV didn't start it at boot. It keeps running after this.
-  if (TV.name === 'tizen') TV.bootService(function (text) { toast(text); });
+  if (TV.name === 'tizen') TV.bootService(function () {});
 
   I18N.set(Prefs.language());
   checkNight();   // now, from the last forecast: not after the TV lists its apps, with the day look until then

@@ -242,6 +242,41 @@ var TV = (function () {
     }
   }
 
+  /** Samsung's own Smart Hub. `com.samsung.tv.csfs` is the Home app on Tizen 9; `coba.newhome` is the older
+   *  component. Don't substitute the TV viewer, which looks like a launch but isn't Samsung Home. */
+  function samsungHome(done) {
+    var ids = ['com.samsung.tv.csfs', 'com.samsung.tv.coba.newhome'];
+    for (var i = 0; i < ids.length; i++) {
+      try {
+        if (window.tizen.application.getAppInfo(ids[i])) { samsungLaunch(ids[i], done); return; }
+      } catch (e) {}
+    }
+    if (done) done(false);
+  }
+
+  /** The service id follows the package id, so a renamed fork keeps working. */
+  function bootServiceId() {
+    try {
+      var info = window.tizen.application.getCurrentApplication().appInfo;
+      if (info && info.packageId) return info.packageId + '.Boot';
+    } catch (e) {}
+    return self.split('.')[0] + '.Boot';
+  }
+
+  /** Samsung: the startup service's status object, or null when it is not running. */
+  function bootStatus(done) {
+    if (!samsung) { setTimeout(function () { done(null); }, 0); return; }
+    var x = new XMLHttpRequest(), over = false;
+    function end(v) { if (!over) { over = true; done(v); } }
+    try {
+      x.open('GET', 'http://127.0.0.1:8093/', true);
+      x.timeout = 1500;
+      x.onload = function () { try { end(JSON.parse(x.responseText)); } catch (e) { end(null); } };
+      x.onerror = x.ontimeout = function () { end(null); };
+      x.send();
+    } catch (e) { end(null); }
+  }
+
   /**
    * The video sources the TV reports ([{type: 'TV' | 'HDMI' | ..., number}]), or null when it doesn't tell. With `all`,
    * the disconnected ones too: Tizen 4 lists an HDMI device on standby as disconnected (even the one on screen), and
@@ -387,49 +422,84 @@ var TV = (function () {
       return false;
     },
 
+    /** Samsung: the startup service's status object, or null when it is not running. */
+    bootStatus: bootStatus,
+
     /**
-     * Samsung: makes sure the startup service (tizen/service/boot.js) runs, starting it the way TizenBrew starts its
-     * own (an app control with the "service" operation), and reports in words what happened: done(text).
+     * Samsung: makes sure the startup service (tizen/service/boot.js) runs. It tries the documented Web Service API
+     * first, then the app-control route TizenBrew uses, then a plain launch. Calls done with {on: true, wakes,
+     * launches} when the service answers, or {on: false, error} when the TV refuses or doesn't answer.
      */
     bootService: function (done) {
       if (!samsung) return;
-      function status(next) {
-        var x = new XMLHttpRequest(), over = false;
-        function end(v) { if (!over) { over = true; next(v); } }
-        try {
-          x.open('GET', 'http://127.0.0.1:8093/', true);
-          x.timeout = 1500;
-          x.onload = function () { try { end(JSON.parse(x.responseText)); } catch (e) { end(null); } };
-          x.onerror = x.ontimeout = function () { end(null); };
-          x.send();
-        } catch (e) { end(null); }
+      var finished = false;
+      function finish(result) {
+        if (finished) return;
+        finished = true;
+        done(result);
       }
       function report(s) {
         if (!s) return false;
-        done('Arranque automático: activo · encendidos detectados: ' + s.wakes + ' · aperturas: ' + s.launches +
-            (s.error ? ' · error: ' + s.error : ''));
+        finish({on: true, wakes: s.wakes, launches: s.launches, error: s.error || ''});
         return true;
       }
-      status(function (s) {
-        if (report(s)) return;
-        var answered = false;
-        setTimeout(function () { if (!answered) done('Arranque automático: el TV no respondió al iniciar el servicio'); }, 8000);
-        try {
-          window.tizen.application.launchAppControl(
-              new window.tizen.ApplicationControl('http://tizen.org/appcontrol/operation/service'), 'FreeMyTVio.Boot',
-              function () {
-                answered = true;
-                setTimeout(function () {
-                  status(function (s2) { if (!report(s2)) done('Arranque automático: iniciado, pero no responde'); });
-                }, 2500);
-              },
-              function (e) { answered = true; done('Arranque automático: el TV no lo permite (' + e.name + ': ' + e.message + ')'); });
-        } catch (e) {
-          answered = true;
-          done('Arranque automático: el TV no lo permite (' + e.message + ')');
+      function start(next) {
+        var id = bootServiceId();
+        var attempts = [];
+        var wrt = (window.wrt && window.wrt.service) ||
+                  (window.webapis && window.webapis.wrt && window.webapis.wrt.service) ||
+                  (window.webapis && window.webapis.service);
+        if (wrt && typeof wrt.startService === 'function') {
+          attempts.push(function (ok, fail) {
+            try {
+              var result = wrt.startService(id);
+              if (result && typeof result.then === 'function') result.then(ok, fail);
+              else ok();
+            } catch (e) { fail(e); }
+          });
         }
+        if (window.tizen.application.startService) {
+          attempts.push(function (ok, fail) {
+            try { window.tizen.application.startService(id, ok, fail); } catch (e) { fail(e); }
+          });
+        }
+        attempts.push(function (ok, fail) {
+          try {
+            window.tizen.application.launchAppControl(
+                new window.tizen.ApplicationControl('http://tizen.org/appcontrol/operation/default'), id, ok, fail);
+          } catch (e) { fail(e); }
+        });
+        attempts.push(function (ok, fail) {
+          try { window.tizen.application.launch(id, ok, fail); } catch (e) { fail(e); }
+        });
+        function attempt(i, lastError) {
+          if (i >= attempts.length) { next(lastError); return; }
+          attempts[i](function () { next(null); }, function (e) { attempt(i + 1, e || lastError); });
+        }
+        attempt(0, null);
+      }
+      bootStatus(function (s) {
+        if (report(s)) return;
+        setTimeout(function () { finish({on: false, error: 'no response'}); }, 9000);
+        start(function (err) {
+          if (err) {
+            finish({on: false, error: (err.name ? err.name + ': ' : '') + (err.message || err)});
+            return;
+          }
+          var tries = 0;
+          (function poll() {
+            bootStatus(function (s2) {
+              if (report(s2)) return;
+              if (++tries < 4) setTimeout(poll, 1500);
+              else finish({on: false, error: 'started, but no answer'});
+            });
+          })();
+        });
       });
     },
+
+    /** Samsung: opens Samsung's own Smart Hub, so a custom Home assignment never traps the viewer. */
+    samsungHome: samsungHome,
 
     /** Samsung: steps aside so the TV shows what's behind it (the input it's on). */
     hide: function () {

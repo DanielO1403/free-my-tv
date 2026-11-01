@@ -89,7 +89,7 @@ stays, and Free My TV opens with a long press of a number key.
 ## Installing it on a Samsung TV (Tizen)
 
 On Samsung it's an app too (2017 and newer, Tizen 3+), installed through Samsung's Developer Mode; Samsung's home
-screen stays. Two ways:
+screen stays unless the optional native Home assignment below is used. Two ways:
 
 - **The release, no tools:** TizenBrew Installer (github.com/reisxd/TizenBrewInstaller) installs the latest GitHub
   release when they type `simbasjungles/free-my-tv`, and on 2023+ TVs signs it with their Samsung account. That build
@@ -126,7 +126,32 @@ screen stays. Two ways:
    can be pulled from it. To look inside the running app, `0 debug FreeMyTVio.FreeMyTV 300` over SDB opens it with
    a Web Inspector port (Runtime.evaluate works on Tizen 3; screenshots don't).
 8. **Tell them:** *Autorun Last App* in the TV's settings (under Start Screen Options; where it is changes by year)
-   makes the TV turn on into Free My TV.
+   makes the TV turn on into Free My TV. If the TV has no such setting, or the Home key must open Free My TV, use the
+   native assignment below.
+
+### Samsung Home key and power-on (optional, one-time)
+
+No `.wgt` can remap Samsung's Home key or make the TV start an app at power-on. On Tizen 6+ the firmware follows the
+`http://tizen.org/appcontrol/operation/main` assignment, `db/appfw/home_appid`, and the Smart Hub
+`db/menu/smart_hub/ontvsetting/auto_start` setting. `tizen/native-home/` sets those three values through the TV's
+native libraries as UID 901, saves the exact originals, and restores them on request. It does not root the TV or
+change security policy.
+
+- The TV must already be in Developer Mode with this computer's IP in **Host PC IP**; TizenBrew's install uses the
+  same connection. The signed app must already be installed with package `FreeMyTVio`.
+- Build the helper with `python3 tizen/native-home/build.py` (needs the .NET SDK 6+ on the computer, not the TV).
+- **Query first:** `python3 tizen/native-home/run.py <IP> query`. It is read-only apart from staging the helper and
+  saves `tizen/native-home/.state/original.json`. Never overwrite that snapshot with an applied state.
+- **Ask before `apply` or `restore`.** They change the TV. `apply` asks for the word `APPLY`; `restore` asks for
+  `RESTORE`. Run `restore` before uninstalling the app or changing its package/app id.
+- Read [`tizen/native-home/README.md`](tizen/native-home/README.md) for the guards and troubleshooting. The helper
+  refuses a different model, a changed baseline, a missing/ineligible app, non-901 UID, non-32-bit runtime, or
+  Tizen older than 6. A failed apply attempts an exact restore.
+- The 2025 QN55Q8FAAK is a Tizen 9 Q8F. The route is verified on 2024 Tizen 9 TVs (S90D and Frame) and documented
+  for Tizen 9; treat `query` output as the authority on this model and do not apply if a key is missing.
+- The boot service (`FreeMyTVio.Boot`, `on-boot="true"`) is only a fallback: public certificates may have the flag
+  normalized off, and the service cannot take the Home key. **Free My TV → Home Settings → Startup check** shows its
+  status. Never present it as a Home-key solution.
 
 ## Releases
 

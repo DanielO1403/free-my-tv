@@ -98,14 +98,30 @@ Developer Mode lasts about 40 days: open the Developer Mode app now and then and
 
 ## Samsung TVs (Tizen)
 
-The same home screen as a Samsung app, with everything the LG one has: the picks, the shelf, the drawer with the inputs, the weather and the prices, day and night, and its own settings. It installs through Samsung's own Developer Mode, with nothing rooted or changed on the TV, and Samsung's home screen stays where it is.
+The same home screen as a Samsung app, with everything the LG one has: the picks, the shelf, the drawer with the inputs, the weather and the prices, day and night, and its own settings. It installs through Samsung's own Developer Mode, with nothing rooted or changed on the TV. Samsung's home screen stays where it is unless you use the optional native Home assignment below.
 
 You need a Samsung TV from 2017 or newer (Tizen 3+) and a computer on the same Wi-Fi. (2015 and 2016 models, on Orsay or Tizen 2, can't run it; a Google TV streamer on HDMI can.)
 
 1. **On the TV**, open **Apps** and type `1 2 3 4 5` on the remote. Turn **Developer mode** on, type your computer's IP address in **Host PC IP**, and restart the TV.
 2. **On your computer**, download [TizenBrew Installer](https://github.com/reisxd/TizenBrewInstaller/releases/latest), the community's installer for Samsung TVs, open it and connect to your TV.
-3. **Install from GitHub:** type `simbasjungles/free-my-tv`. On 2023 and newer TVs it asks you to sign in to your Samsung account once, to sign the app for your TV.
-4. **Straight to it:** in the TV's settings, under Start Screen Options, turn on **Autorun Last App**: the TV turns on into Free My TV.
+3. **Install from GitHub:** type `simbasjungles/free-my-tv`. On 2023 and newer TVs it asks you to sign in to your Samsung account once, to sign the app for your TV. To install your own build instead, choose **Custom WGT** in TizenBrew Installer and pick `FreeMyTV-tizen.wgt`; it signs that for your TV too.
+4. **Straight to it:** in the TV's settings, under Start Screen Options, turn on **Autorun Last App**: the TV turns on into Free My TV. If your TV doesn't offer that, use the native Home assignment below.
+
+### Home button and startup
+
+The remote's **Home** key and the app the TV starts when it powers on are not app APIs. A `.wgt` cannot change either one. Samsung's own firmware follows a native Home assignment instead: the `main` app-control operation, `db/appfw/home_appid`, and the Smart Hub `auto_start` setting. The one-time helper in [`tizen/native-home`](tizen/native-home/README.md) sets exactly those values through the TV's own libraries, after saving the original ones.
+
+It is optional, needs the same Developer Mode connection TizenBrew used, and changes only the Home app and the startup setting. It does not root the TV or change security policy. On a 2024-2025 Tizen 9 TV (S90D, Frame, Q8F) this is the reliable way to make Home and power-on open Free My TV; the QN55Q8FAAK is a 2025 Q8F, so run `query` first and read the values it prints.
+
+```bash
+python3 tizen/native-home/build.py
+python3 tizen/native-home/run.py 192.168.1.50 query
+python3 tizen/native-home/run.py 192.168.1.50 apply
+```
+
+`query` is read-only apart from staging the helper and saves `tizen/native-home/.state/original.json`. Keep that file. `apply` asks you to type `APPLY`; `restore` puts the original Home app and startup setting back. Run `restore` before uninstalling Free My TV or changing its app id, or Samsung's Home key has nowhere to go. The full guard list, failure behavior, and troubleshooting are in [`tizen/native-home/README.md`](tizen/native-home/README.md).
+
+The app also ships a small boot service as a fallback (Free My TV → Home Settings → **Startup check**). Samsung may disable it for public certificates, and it cannot take the Home key, so it does not replace the native assignment.
 
 This build takes your city from the TV's time zone. For your exact city and the trending picks, build it with your own `config.properties` and [TMDB key](#the-tmdb-key): open the folder in Claude Code and say *"Install Free My TV on my Samsung TV at 192.168.1.50. I live in Lisbon."* It sets up Samsung's tools, and on 2023 and newer TVs you sign in to your Samsung account in the browser to make the certificate. Your signed build installs with `python3 tizen/install.py 192.168.1.50`, which needs only Python: no Tizen Studio, and no Rosetta on Apple Silicon Macs.
 
@@ -154,11 +170,13 @@ They land in the app's own folder on the TV (no permission needed); on Android 1
 
 On the TV: *Free My TV* → *Home Screen* → *Original*. The factory home screen, screensaver and every app come back exactly as they were. If the new home screen ever crashes three times in five minutes, it switches back by itself.
 
-To remove it for good, switch to *Original* first, then uninstall *Free My TV* (Settings → Apps). Uninstalled it while it was on? Install it again and pick *Original*: the list of what it turned off is kept in the TV's settings, so everything comes back.
+On Samsung, if you used the native Home assignment, run `python3 tizen/native-home/run.py <TV IP> restore` first. That puts Samsung's Home app and startup setting back. *Samsung Home* in the drawer opens the TV's own Smart Hub while Free My TV still has the Home key.
+
+To remove it for good, switch to *Original* (and restore on Samsung) first, then uninstall *Free My TV* (Settings → Apps). Uninstalled it while it was on? Install it again and pick *Original*: the list of what it turned off is kept in the TV's settings, so everything comes back.
 
 ## What it changes
 
-- It becomes the home screen and the screensaver.
+- On Google TV and Android TV, it becomes the home screen and the screensaver. On Samsung, the web app changes nothing by itself; the optional native Home assignment makes it the Home app and the startup app.
 - It turns off, without uninstalling:
   - the stock home screen and screensaver;
   - Google TV's recovery home, Play Games and YouTube Music;
@@ -225,6 +243,7 @@ It's your code, and Claude Code finds its way around it. Try:
 | [`web/tv.js`](web/tv.js) | The TV's apps and inputs, on LG and Samsung |
 | [`webos/build.py`](webos/build.py), [`webos/install.py`](webos/install.py) | The LG app package and its install |
 | [`tizen/build.py`](tizen/build.py) | The Samsung app package |
+| [`tizen/native-home/`](tizen/native-home) | Optional Samsung Home-key and power-on assignment, with an exact restore |
 
 The website ([freemytv.io](https://freemytv.io)) is in [`docs/`](docs): plain HTML, CSS and JS on GitHub Pages.
 
