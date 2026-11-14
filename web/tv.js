@@ -132,6 +132,7 @@ var TV = (function () {
     'com.wbd.stream': 'icons/max.svg',
     'com.hbo.hbomax': 'icons/max.svg',
     'com.wbd.max': 'icons/max.svg',
+    '5b8c3eb16b.BeamCTVDev': 'icons/max.svg',   // the Q8F's HBO Max, next to its "Max Worker" service
     'rJeHak5zRg.Spotify': 'icons/spotify.svg',
     'cexr1qp97S.Deezer': 'icons/deezer.svg',
     '5SLwh7m3En.TizenYouTubeKids': 'icons/youtubekids.svg',
@@ -151,6 +152,7 @@ var TV = (function () {
     'com.wbd.stream': 'Max',
     'com.hbo.hbomax': 'Max',
     'com.wbd.max': 'Max',
+    '5b8c3eb16b.BeamCTVDev': 'Max',
     'MCmYXNxgcu.DisneyPlus': 'Disney+',
     'rJeHak5zRg.Spotify': 'Spotify',
     'org.tizen.globoplayapp': 'Globoplay'
@@ -176,7 +178,8 @@ var TV = (function () {
     ['NvZ26VG9Yw.HBOGOLAG', 'Max', 'icons/max.svg'],
     ['com.wbd.stream', 'Max', 'icons/max.svg'],
     ['com.hbo.hbomax', 'Max', 'icons/max.svg'],
-    ['com.wbd.max', 'Max', 'icons/max.svg']
+    ['com.wbd.max', 'Max', 'icons/max.svg'],
+    ['5b8c3eb16b.BeamCTVDev', 'Max', 'icons/max.svg']
   ];
 
   // Samsung's settings menu on Tizen 3, which answers no "settings" app control.
