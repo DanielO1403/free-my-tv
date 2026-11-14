@@ -218,7 +218,8 @@ var Data = (function () {
   /** Service name on TMDB (part of it, lowercase) → our key, how to find its app on the TV (id, name), its name. */
   var SERVICES = [
     ['netflix', 'netflix', /^netflix$/, /netflix/i, 'Netflix'],
-    ['prime video', 'prime', /^amazon$/, /prime video|amazon/i, 'Prime Video'],
+    ['prime video', 'prime', /^(amazon|primevideo|org\.tizen\.(primevideo|ignition)|com\.amazon\.amazonvideo[^.]*|.*amazonignitionlauncher.*)$/i,
+      /prime video|^amazon$/i, 'Prime Video'],
     ['disney', 'disney', /disney/, /disney/i, 'Disney+'],
     ['hulu', 'hulu', /^hulu/, /hulu/i, 'Hulu'],
     ['paramount', 'paramount', /paramount|cbs/, /paramount/i, 'Paramount+'],
@@ -237,6 +238,7 @@ var Data = (function () {
     for (var s = 0; s < SERVICES.length; s++) {
       if (SERVICES[s][1] !== key) continue;
       for (var i = 0; i < installed.length; i++) {
+        if (/alexa/i.test(installed[i].title)) continue;   // Amazon's Alexa app is not a video service
         if (SERVICES[s][2].test(installed[i].id) || SERVICES[s][3].test(installed[i].title)) return installed[i];
       }
     }

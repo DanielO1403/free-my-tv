@@ -110,7 +110,7 @@ var TV = (function () {
   // Bixby, search, previews, the weather and notification popups, Apple TV's stand-in and engine.
   // A 2020 TU8000 (Tizen 5.5) ships Prime Video as org.tizen.primevideo, next to a -dummy and a _companionapp.
   // A 2023 Q60C (Tizen 9 in Brazil) ships Globoplay as org.tizen.globoplayapp.
-  var SAMSUNG_HIDDEN = new RegExp('^(org\\.volt\\.|org\\.tizen\\.(?!browser$|netflix|primevideo$|globoplay)|org\\.tizen\\.netflixlowmem$|ise-|ug-|d75857a5-)' +
+  var SAMSUNG_HIDDEN = new RegExp('^(org\\.volt\\.|org\\.tizen\\.(?!browser$|netflix|primevideo$|ignition|globoplay)|org\\.tizen\\.netflixlowmem$|ise-|ug-|d75857a5-)' +
       '|[Ss]ervice$|[Dd]aemon|Preview$|syspopup|[Hh]elper$|AdPlayer|AdSuite|[Kk]eyboard|\\.OTApp$' +
       '|^com\\.samsung\\.(calendar-account-manager|tv\\.(cobalt-|aria-(dummy|engine)|airplay-app|ambient-support|' +
       'built-in-app-info-viewer|commonsearch|searchall|preview-|tv-scheduler|csfs|notification-app|mycontents|' +
@@ -122,11 +122,16 @@ var TV = (function () {
   // for the tiles, with a width and height so old WebKit sizes them like PNGs.
   var SAMSUNG_ICONS = {
     '9Ur5IzDKqV.TizenYouTube': 'icons/youtube.png',
-    'evKhCgZelL.AmazonIgnitionLauncher2': 'icons/prime.png',
     'org.tizen.primevideo': 'icons/prime.png',
+    'org.tizen.ignition': 'icons/prime.png',
     'RN1MCdNq8t.Netflix': 'icons/netflix.svg',
     'org.tizen.netflix-app': 'icons/netflix.svg',
+    'MCmYXNxgcu.DisneyPlus': 'icons/disney.svg',
     'NvZ26VG9Yw.HBOGOLAG': 'icons/max.svg',
+    'cj37Ni3qXM.HBONow': 'icons/max.svg',
+    'com.wbd.stream': 'icons/max.svg',
+    'com.hbo.hbomax': 'icons/max.svg',
+    'com.wbd.max': 'icons/max.svg',
     'rJeHak5zRg.Spotify': 'icons/spotify.svg',
     'cexr1qp97S.Deezer': 'icons/deezer.svg',
     '5SLwh7m3En.TizenYouTubeKids': 'icons/youtubekids.svg',
@@ -138,13 +143,41 @@ var TV = (function () {
     'AprZAARz4r.Jellyfin': 'icons/jellyfin.svg'
   };
 
-  // Names Smart Hub gets wrong: HBO's app has none (so it never reached the shelf), others are long or old.
+  // Names Smart Hub gets wrong: HBO's app has none (so it never reached the shelf), others are long or old. Prime
+  // Video is not listed here: on a 2025 Q8F the Amazon app named here is Alexa, so its real name must win.
   var SAMSUNG_TITLES = {
     'NvZ26VG9Yw.HBOGOLAG': 'Max',
+    'cj37Ni3qXM.HBONow': 'Max',
+    'com.wbd.stream': 'Max',
+    'com.hbo.hbomax': 'Max',
+    'com.wbd.max': 'Max',
+    'MCmYXNxgcu.DisneyPlus': 'Disney+',
     'rJeHak5zRg.Spotify': 'Spotify',
-    'evKhCgZelL.AmazonIgnitionLauncher2': 'Prime Video',
     'org.tizen.globoplayapp': 'Globoplay'
   };
+
+  // Services Smart Hub sometimes leaves out of getAppsInfo (show === false) or reports under a numeric id. Looked up
+  // one by one after the list, and kept only when the TV really has them: [id, name if the TV has none, icon].
+  var SAMSUNG_EXTRA = [
+    ['3201910019365', 'Prime Video', 'icons/prime.png'],
+    ['3201512006785', 'Prime Video', 'icons/prime.png'],
+    ['org.tizen.primevideo', 'Prime Video', 'icons/prime.png'],
+    ['org.tizen.ignition', 'Prime Video', 'icons/prime.png'],
+    ['com.amazon.amazonvideo.livingroom', 'Prime Video', 'icons/prime.png'],
+    ['evKhCgZelL.AmazonIgnitionLauncher2', 'Prime Video', 'icons/prime.png'],
+    ['3201901017640', 'Disney+', 'icons/disney.svg'],
+    ['3202009021709', 'Disney+', 'icons/disney.svg'],
+    ['3202204027038', 'Disney+', 'icons/disney.svg'],
+    ['MCmYXNxgcu.DisneyPlus', 'Disney+', 'icons/disney.svg'],
+    ['com.disney.disneyplus-prod', 'Disney+', 'icons/disney.svg'],
+    ['3201601007230', 'Max', 'icons/max.svg'],
+    ['3202301029760', 'Max', 'icons/max.svg'],
+    ['cj37Ni3qXM.HBONow', 'Max', 'icons/max.svg'],
+    ['NvZ26VG9Yw.HBOGOLAG', 'Max', 'icons/max.svg'],
+    ['com.wbd.stream', 'Max', 'icons/max.svg'],
+    ['com.hbo.hbomax', 'Max', 'icons/max.svg'],
+    ['com.wbd.max', 'Max', 'icons/max.svg']
+  ];
 
   // Samsung's settings menu on Tizen 3, which answers no "settings" app control.
   var SAMSUNG_MENU = 'org.tizen.menu';
@@ -215,6 +248,17 @@ var TV = (function () {
           if (out.some(function (x) { return x.id === id; })) return;
           try { out.push(samsungApp(window.tizen.application.getAppInfo(id))); } catch (e) {}
         });
+        // A few streaming apps Smart Hub hides (or lists only by a numeric id): look them up by the ids we know.
+        for (var e = 0; e < SAMSUNG_EXTRA.length; e++) {
+          var extra = SAMSUNG_EXTRA[e], have = false;
+          for (var o = 0; o < out.length; o++) if (out[o].id === extra[0]) { have = true; break; }
+          if (have) continue;
+          try {
+            var found = window.tizen.application.getAppInfo(extra[0]);
+            // An Amazon id that reports itself as Alexa is not Prime Video, whatever the old tables said.
+            if (found && !/alexa/i.test((found.name || '') + ' ' + found.id)) out.push(samsungApp(found, extra[1], extra[2]));
+          } catch (err) {}
+        }
         // The built-in Netflix stays only when the store's Netflix isn't installed.
         var store = out.some(function (x) { return /\.Netflix$/.test(x.id); });
         if (store) out = out.filter(function (x) { return x.id.indexOf('org.tizen.netflix') !== 0; });
@@ -227,11 +271,16 @@ var TV = (function () {
     }
   }
 
-  function samsungApp(a) {
-    var icon = a.iconPath || '';
+  function samsungApp(a, fallbackTitle, fallbackIcon) {
+    var icon = a.iconPath || '', title = SAMSUNG_TITLES[a.id] || a.name || fallbackTitle || a.id;
     if (icon && icon.indexOf('://') < 0) icon = 'file://' + icon;
     if (SAMSUNG_ICONS[a.id]) icon = SAMSUNG_ICONS[a.id];
-    return {id: a.id, title: SAMSUNG_TITLES[a.id] || a.name || a.id, icon: icon, color: ''};
+    else if (fallbackIcon) icon = fallbackIcon;
+    // An id we don't know still gets the right logo when its name is one of the services we ship.
+    else if (/prime video/i.test(title)) icon = 'icons/prime.png';
+    else if (/disney/i.test(title)) icon = 'icons/disney.svg';
+    else if (/^(hbo )?max$|hbo max/i.test(title)) icon = 'icons/max.svg';
+    return {id: a.id, title: title, icon: icon, color: ''};
   }
 
   function samsungLaunch(id, done) {

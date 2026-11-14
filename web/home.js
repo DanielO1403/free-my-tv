@@ -64,7 +64,8 @@
   var SHELF = [
     ['netflix', /^netflix$/, /netflix/i, ['#0A0A0A', '#000000']],
     ['youtube', /youtube/, /^youtube$/i, ['#1C1C1E', '#09090A']],
-    ['prime', /^amazon$/, /prime video|amazon/i, ['#2AA8FF', '#0A68D4']],
+    ['prime', /^(amazon|primevideo|org\.tizen\.(primevideo|ignition)|com\.amazon\.amazonvideo[^.]*|.*amazonignitionlauncher.*)$/i,
+      /prime video|^amazon$/i, ['#2AA8FF', '#0A68D4']],
     ['disney', /disney/, /disney/i, ['#173584', '#08143F']],
     ['max', /hbo|wbd/, /^(hbo )?max$|hbo max/i, ['#5C30E8', '#221684']],
     ['appletv', /appletv|apple\.tv/, /apple tv/i, ['#1C1C1E', '#000000']],
@@ -76,9 +77,9 @@
     ['jellyfin', /jellyfin/i, /jellyfin/i, ['#AA5CC3', '#00A4DC']],
     ['spotify', /spotify/, /spotify/i, ['#1DB954', '#0F7A36']]
   ];
-  // Apps shown at once, as on Android: 8 (today's smallest tiles, 178 wide); the shelf scrolls for the rest. The
-  // built-in list keeps 8 too.
-  var SHELF_VISIBLE = 8, FEW_APPS = 8;
+  // Apps shown at once: 9, so the dock's nine services (YouTube through Spotify, HBO Max included) fit without
+  // scrolling; the shelf still scrolls when more apps are added.
+  var SHELF_VISIBLE = 9, FEW_APPS = 9;
 
   function shelfKey(app) {
     for (var i = 0; i < SHELF.length; i++) if (SHELF[i][1].test(app.id) || SHELF[i][2].test(app.title)) return SHELF[i];
@@ -272,13 +273,15 @@
     ['youtube', 'YouTube', /youtube(?!kids)/i, /^youtube$/i],
     ['netflix', 'Netflix', /netflix/i, /netflix/i],
     ['xbox', 'Xbox', null, null, 'source:HDMI:3'],
-    ['prime', 'Prime Video', /primevideo|amazon/i, /prime video|amazon/i],
+    ['prime', 'Prime Video', /^(amazon|primevideo|org\.tizen\.(primevideo|ignition)|com\.amazon\.amazonvideo[^.]*|.*amazonignitionlauncher.*)$/i,
+      /prime video|^amazon$/i],
     ['disney', 'Disney+', /disney/i, /disney/i],
+    ['max', 'Max', /hbo|wbd|\.max/i, /^(hbo )?max$|hbo max/i],
     ['paramount', 'Paramount+', /paramount|cbs/i, /paramount/i],
     ['appletv', 'Apple TV', /appletv|apple\.tv/i, /apple tv/i],
     ['spotify', 'Spotify', /spotify/i, /spotify/i]
   ];
-  var DOCK_LOGOS = {youtube: 1, netflix: 1, xbox: 1, prime: 1, paramount: 1, appletv: 1, spotify: 1};
+  var DOCK_LOGOS = {youtube: 1, netflix: 1, xbox: 1, prime: 1, disney: 1, max: 1, paramount: 1, appletv: 1, spotify: 1};
 
   function pickShelf() {
     var out = [];
@@ -286,8 +289,12 @@
       var spec = DOCK[d], found = null;
       if (spec[4]) found = {id: spec[4], title: spec[1]};
       else {
-        for (var a = 0; a < apps.length && !found; a++) {
-          if (spec[2].test(apps[a].id) || spec[3].test(apps[a].title)) found = apps[a];
+        // The name first: Amazon's Alexa app has "amazon" in its id, so an id-only match could put Alexa on the
+        // Prime Video tile. A real "Prime Video" is picked by name before any other Amazon app.
+        for (var a = 0; a < apps.length && !found; a++) if (spec[3].test(apps[a].title)) found = apps[a];
+        // Never let an Amazon id that the TV calls Alexa stand in for Prime Video.
+        for (var b = 0; b < apps.length && !found; b++) {
+          if (spec[2].test(apps[b].id) && !/alexa/i.test(apps[b].title)) found = apps[b];
         }
       }
       out.push({id: found ? found.id : '', title: spec[1], dock: spec[0], app: found});
