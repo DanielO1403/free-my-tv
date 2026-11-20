@@ -879,6 +879,11 @@
     };
   }
 
+  /** The remote's WWW / Internet key goes straight to HDMI 3, the way the native Home assignment sends Home here. */
+  function wwwKey() {
+    launcher('source:HDMI:3', 'HDMI 3')();
+  }
+
   function tvSettings() {
     TV.settings(function (ok) {
       if (!ok) toast(tr("Couldn't open TV Settings"));
@@ -1112,6 +1117,7 @@
   document.addEventListener('keydown', function (e) {
     var k = e.keyCode;
     if (poke()) { e.preventDefault(); return; }   // the first press only wakes the screen
+    if (TV.keys.www.indexOf(k) >= 0 || /www|browser|internet/i.test(e.key || '')) { wwwKey(); e.preventDefault(); return; }
     if (k === TV.keys.left) move(-1, 0);
     else if (k === TV.keys.right) move(1, 0);
     else if (k === TV.keys.up) move(0, -1);

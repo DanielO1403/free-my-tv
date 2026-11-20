@@ -612,7 +612,22 @@ var TV = (function () {
       try { return Intl.DateTimeFormat().resolvedOptions().timeZone || ''; } catch (e) { return ''; }
     },
 
-    /** Key codes: the arrows, OK and the TV's Back (LG 461, Samsung 10009). */
-    keys: {left: 37, up: 38, right: 39, down: 40, ok: 13, back: samsung ? 10009 : 461}
+    /** Key codes: the arrows, OK, the TV's Back (LG 461, Samsung 10009) and the WWW/browser key. */
+    keys: (function () {
+      var k = {left: 37, up: 38, right: 39, down: 40, ok: 13, back: samsung ? 10009 : 461, www: [150, 178]};
+      // The WWW key's name differs by model; register every browser-ish key the TV lists and accept its code too.
+      if (samsung) {
+        try {
+          var list = window.tizen.tvinputdevice.getSupportedKeys();
+          for (var i = 0; i < list.length; i++) {
+            var name = list[i].name || '';
+            if (!/www|browser|internet/i.test(name)) continue;
+            try { window.tizen.tvinputdevice.registerKey(name); } catch (e) {}
+            if (k.www.indexOf(list[i].code) < 0) k.www.push(list[i].code);
+          }
+        } catch (e) {}
+      }
+      return k;
+    })()
   };
 })();
