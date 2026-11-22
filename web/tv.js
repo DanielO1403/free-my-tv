@@ -615,17 +615,26 @@ var TV = (function () {
     /** Key codes: the arrows, OK, the TV's Back (LG 461, Samsung 10009) and the WWW/browser key. */
     keys: (function () {
       var k = {left: 37, up: 38, right: 39, down: 40, ok: 13, back: samsung ? 10009 : 461, www: [150, 178]};
-      // The WWW key's name differs by model; register every browser-ish key the TV lists and accept its code too.
+      // The WWW key's name differs by model. Register every browser-ish name the TV knows (and every one it lists),
+      // so the TV stops opening its own browser and sends the key here instead.
       if (samsung) {
+        var names = ['WWW', 'Browser', 'WebBrowser', 'Internet', 'Web', 'BrowserHome'];
         try {
           var list = window.tizen.tvinputdevice.getSupportedKeys();
           for (var i = 0; i < list.length; i++) {
             var name = list[i].name || '';
-            if (!/www|browser|internet/i.test(name)) continue;
-            try { window.tizen.tvinputdevice.registerKey(name); } catch (e) {}
+            if (!/www|browser|internet|^web$/i.test(name)) continue;
+            if (names.indexOf(name) < 0) names.push(name);
             if (k.www.indexOf(list[i].code) < 0) k.www.push(list[i].code);
           }
         } catch (e) {}
+        for (var n = 0; n < names.length; n++) {
+          try {
+            window.tizen.tvinputdevice.registerKey(names[n]);
+            var got = window.tizen.tvinputdevice.getKey(names[n]);
+            if (got && got.code && k.www.indexOf(got.code) < 0) k.www.push(got.code);
+          } catch (e) {}
+        }
       }
       return k;
     })()
