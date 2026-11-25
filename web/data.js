@@ -2,7 +2,8 @@
  * What the home screen shows, kept in localStorage so it opens with numbers:
  *  - the picks: what's trending this week and recent releases, only from the streaming apps on this TV (TMDB, with
  *    the person's own free key from config.properties), three per hour;
- *  - weather, sunrise and sunset (Open-Meteo, every 30 min) and optional crypto prices (Binance, every 5 min).
+ *  - weather, sunrise and sunset (Open-Meteo, every 30 min), the dollar and the euro in Colombian pesos (a free daily
+ *    table) and optional crypto prices (Binance, every 5 min).
  * Settings changed on the TV (Prefs) win over config.properties, as on Android. Built without a city (--generic), the
  * TV's time zone gives the city, and its country the currency and the region (zones.js).
  */
@@ -207,6 +208,36 @@ var Data = (function () {
         changed();
       });
     })(0);
+  }
+
+  // MARK: - Exchange rates
+
+  /** The dollar and the euro in Colombian pesos, from the free daily table (no key, updates once a day). */
+  var rates = null, ratesAt = 0, fetchingRates = false;
+
+  function parseRates(o) {
+    var r = o && o.rates;
+    if (!r || !r.COP || !r.EUR || !r.USD) return null;
+    return {usdCop: r.COP / r.USD, eurCop: r.COP / r.EUR};
+  }
+
+  (function () {
+    var r = stored('rates');
+    if (r && r.body) { rates = parseRates(r.body); if (rates) ratesAt = r.at; }
+  })();
+
+  function refreshRates() {
+    var now = Date.now();
+    if (fetchingRates || (now - ratesAt < 30 * 60000 && now >= ratesAt)) return;
+    fetchingRates = true;
+    get('https://open.er-api.com/v6/latest/USD', {}, function (err, body) {
+      fetchingRates = false;
+      if (err || !parseRates(body)) return;
+      rates = parseRates(body);
+      ratesAt = Date.now();
+      store('rates', {body: body, at: ratesAt});
+      changed();
+    });
   }
 
   // MARK: - Picks (TMDB)
@@ -520,7 +551,7 @@ var Data = (function () {
     onChange: function (fn) { listeners.push(fn); },
     setApps: function (apps) { installed = apps; },
     appFor: appFor,
-    refresh: function () { refreshWeather(); refreshPrices(); refreshRecs(); },
+    refresh: function () { refreshWeather(); refreshPrices(); refreshRates(); refreshRecs(); },
     settingsChanged: function () { pricesAt = 0; refreshPrices(); changed(); },
     get weather() { return weather; },
     get weatherAt() { return weatherAt; },
@@ -528,6 +559,10 @@ var Data = (function () {
     changes: changes,
     get pricesAt() { return pricesAt; },
     activeCoins: activeCoins,
+    get rates() { return rates; },
+    get ratesAt() { return ratesAt; },
+    /** Pesos have no cents in practice; the rate table's own precision would only add noise. */
+    fx: function (v) { return isNaN(v) ? '—' : fmt(v, v >= 1000 ? 0 : 2); },
     hasKey: function () { return !!KEY; },
     recsError: function () { return recsError; },
     picks: now,

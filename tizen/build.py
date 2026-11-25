@@ -65,7 +65,7 @@ def build(preview, config, profile):
         manifest = f.read()
     app_id = re.search(r'<tizen:application id="([^"]+)"', manifest).group(1)
     version = re.search(r'<widget [^>]*version="([^"]+)"', manifest).group(1)
-    app = webapp.files(config, 'tizen/build.py')
+    app = webapp.files(config, 'tizen/build.py', version)
     for name in ('config.xml', 'icon.png', 'service/boot.js'):
         with open(os.path.join(ROOT, 'tizen', name), 'rb') as f:
             app[name] = f.read()

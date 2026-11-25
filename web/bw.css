@@ -119,3 +119,55 @@ html, body { background: #000; }
   backdrop-filter: blur(5px);
 }
 #saver .clock .date, .night #saver .clock .date { color: rgba(245, 245, 245, 0.78); }
+
+/* Under the clock: the dollar and the euro in Colombian pesos, on the same glass. */
+#rates {
+  position: absolute;
+  left: 48px;
+  top: 330px;
+  min-width: 340px;
+  padding: 20px 34px 22px;
+  border-radius: 30px;
+  background: rgba(0, 0, 0, 0.5);
+  box-shadow: inset 0 0 0 1.5px rgba(255, 255, 255, 0.32);
+  -webkit-backdrop-filter: blur(5px);
+  backdrop-filter: blur(5px);
+  color: #F5F5F5;
+  font-feature-settings: 'tnum';
+  pointer-events: none;
+}
+#rates.empty { display: none; }
+#rates .row {
+  display: -webkit-flex;
+  display: flex;
+  -webkit-align-items: baseline;
+  align-items: baseline;
+  -webkit-justify-content: space-between;
+  justify-content: space-between;
+}
+#rates .row + .row { margin-top: 4px; }
+#rates .code { font-size: 18px; font-weight: 500; letter-spacing: 0.14em; color: rgba(245, 245, 245, 0.7); }
+#rates .val { margin-left: 44px; font-size: 34px; font-weight: 300; }
+#rates .note { margin-top: 8px; font-size: 16px; font-weight: 500; letter-spacing: 0.08em; color: rgba(245, 245, 245, 0.5); }
+
+/* Under the dock: which build is on the TV. Kept clear of the screen's bottom edge, where TVs crop (overscan). */
+#build {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 1028px;
+  text-align: center;
+  pointer-events: none;
+}
+#build .pill {
+  display: inline-block;
+  padding: 5px 16px 6px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.45);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.2);
+  font-size: 17px;
+  font-weight: 500;
+  line-height: 1.25;
+  letter-spacing: 0.22em;
+  color: rgba(255, 255, 255, 0.82);
+}

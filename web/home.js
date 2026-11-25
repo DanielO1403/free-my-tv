@@ -379,6 +379,7 @@
     sym('settings', r);
     el('div', 'tip', r, tr('Home Settings'));
     hover(r, Z.TOP, 5);
+    layoutTop();
   }
 
   function renderQuotes() {
@@ -447,6 +448,63 @@
     var d = new Date(), c = $('clock');
     c.firstChild.textContent = formatDate('format|h:mm', d.getTime());
     c.lastChild.textContent = formatDate('format|EEEE, MMMM d', d.getTime());
+    layoutTop();
+  }
+
+  /** Under the clock: the dollar and the euro in Colombian pesos, from the free daily table. */
+  function renderRates() {
+    var card = $('rates'), r = Data.rates;
+    card.innerHTML = '';
+    setClass(card, 'empty', !r);
+    if (!r) return;
+    var line = el('div', 'row', card);
+    el('span', 'code', line, 'USD / COP');
+    el('span', 'val', line, Data.fx(r.usdCop));
+    line = el('div', 'row', card);
+    el('span', 'code', line, 'EUR / COP');
+    el('span', 'val', line, Data.fx(r.eurCop));
+    var stale = Data.staleness(Data.ratesAt, 12 * 3600000);
+    if (stale) el('div', 'note', card, stale);
+    layoutTop();
+  }
+
+  /**
+   * The top row: the clock, the weather and the buttons, with the same gap between them and the same margin at the
+   * screen's edges, whatever their widths are (a longer city name or a five-digit time moves them all).
+   */
+  function layoutTop() {
+    var edge = 48, clock = $('clock'), wx = $('wxbar'), btn = $('buttons').children[0];
+    if (!btn) return;
+    var clockOn = getComputedStyle(clock).display !== 'none' && clock.offsetWidth > 0;
+    var wxOn = !hasClass(wx, 'empty') && getComputedStyle(wx).display !== 'none' && wx.offsetWidth > 0;
+    var items = [], sum = 0, i;
+    if (clockOn) items.push({el: clock, w: clock.offsetWidth});
+    if (wxOn) {
+      wx.style.webkitTransform = 'none';
+      wx.style.transform = 'none';
+      items.push({el: wx, w: wx.offsetWidth});
+    }
+    items.push({el: btn, w: btn.offsetWidth || 68});
+    for (i = 0; i < items.length; i++) sum += items[i].w;
+    if (items.length === 1) {
+      btn.style.left = (1920 - edge - items[0].w) + 'px';
+      return;
+    }
+    var gap = Math.max(16, (1920 - 2 * edge - sum) / (items.length - 1)), x = edge;
+    for (i = 0; i < items.length; i++) {
+      items[i].el.style.left = Math.round(x) + 'px';
+      x += items[i].w + gap;
+    }
+    var rates = $('rates');
+    rates.style.left = edge + 'px';
+    rates.style.top = (clock.offsetTop + clock.offsetHeight + 22) + 'px';
+  }
+
+  /** Under the dock: which build this is. */
+  function renderBuild() {
+    var box = $('build'), v = CONFIG.version || '';
+    box.innerHTML = '';
+    if (v) el('span', 'pill', box, 'v' + v);
   }
 
   /** On the minute, so the clock never runs late (the 30-second refresh could, by up to 30 s). */
@@ -572,6 +630,7 @@
       sym(Data.symbol(x.code, x.day), h);
       el('div', 'd', h, Data.degrees(x.temp));
     }
+    layoutTop();
   }
 
   function renderPanels() {
@@ -1139,6 +1198,8 @@
     renderShelf();
     renderDrawer();
     renderClock();
+    renderRates();
+    renderBuild();
     checkNight();
     if (st.zone === Z.SETTINGS) renderSettings();
     updateFocus();
@@ -1178,6 +1239,7 @@
     renderQuotes();
     renderCards();
     renderPanels();
+    renderRates();
     checkNight();
   });
 
@@ -1212,7 +1274,7 @@
     loadApps(function () { renderShelf(); renderDrawer(); Data.refresh(); });
   }
 
-  window.addEventListener('resize', fit);
+  window.addEventListener('resize', function () { fit(); layoutTop(); });
   document.addEventListener('webOSRelaunch', reopened);   // LG: opened again while running
   window.addEventListener('appcontrol', reopened);        // Samsung: the same
   document.addEventListener('visibilitychange', function () {
@@ -1232,7 +1294,12 @@
   fit();
   xboxCheck();
   renderTop();
+  renderBuild();
   tickClock();
+  if (document.fonts && document.fonts.ready && document.fonts.ready.then) {
+    document.fonts.ready.then(function () { layoutTop(); });
+  }
+  window.addEventListener('load', layoutTop);
   loadApps(function () {
     renderAll();
     Data.refresh();

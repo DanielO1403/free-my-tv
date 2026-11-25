@@ -61,7 +61,7 @@ def build(preview, config):
     with open(os.path.join(ROOT, 'webos', 'appinfo.json'), encoding='utf-8') as f:
         info = json.load(f)
     app_id, version = info['id'], info['version']
-    app = webapp.files(config, 'webos/build.py')
+    app = webapp.files(config, 'webos/build.py', version)
     for name in ('appinfo.json', 'icon.png', 'largeIcon.png'):
         with open(os.path.join(ROOT, 'webos', name), 'rb') as f:
             app[name] = f.read()
