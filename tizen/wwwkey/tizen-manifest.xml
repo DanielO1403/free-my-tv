@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns="http://tizen.org/ns/packages" api-version="4.0" package="FreeMyTVioWWW" version="1.0.0">
+  <profile name="common" />
+  <service-application appid="FreeMyTVioWWW.Key" exec="homekey-stub" type="capp" multiple="false" taskmanage="false" nodisplay="true" on-boot="false">
+    <label>WWW Key</label>
+    <icon>homekey.png</icon>
+  </service-application>
+  <app-context appid="FreeMyTVioWWW.Key">
+    <app-context-rule>
+      <source selector="key">XF86WWW</source>
+      <target selector="app" request="launch" args="discrete:XF86DiscretHDMI3 set_source_before_visible:1 __K_EX_FORCE_BOOST:enable">org.tizen.tv-viewer</target>
+    </app-context-rule>
+  </app-context>
+  <shortcut-list />
+  <privileges>
+    <privilege>http://tizen.org/privilege/appmanager.launch</privilege>
+  </privileges>
+</manifest>

@@ -2,8 +2,8 @@
  * What the home screen shows, kept in localStorage so it opens with numbers:
  *  - the picks: what's trending this week and recent releases, only from the streaming apps on this TV (TMDB, with
  *    the person's own free key from config.properties), three per hour;
- *  - weather, sunrise and sunset (Open-Meteo, every 30 min), the dollar and the euro in Colombian pesos (a free daily
- *    table) and optional crypto prices (Binance, every 5 min).
+ *  - weather, sunrise and sunset (Open-Meteo, every 30 min), the dollar and the euro in Colombian pesos (XE's own
+ *    converter, with a free daily table as fallback) and optional crypto prices (Binance, every 5 min).
  * Settings changed on the TV (Prefs) win over config.properties, as on Android. Built without a city (--generic), the
  * TV's time zone gives the city, and its country the currency and the region (zones.js).
  */
@@ -82,6 +82,22 @@ var Data = (function () {
       var json;
       try { json = JSON.parse(x.responseText); } catch (e) { done(e); return; }
       done(null, json);
+    };
+    x.ontimeout = x.onerror = function () { if (!over) { over = true; done(new Error('no connection')); } };
+    x.send();
+  }
+
+  /** GET a text document (XE's converter is HTML); done(error, text). */
+  function getText(url, done) {
+    var x = new XMLHttpRequest();
+    var over = false;
+    x.open('GET', url, true);
+    x.timeout = 45000;
+    x.onreadystatechange = function () {
+      if (x.readyState !== 4 || over) return;
+      over = true;
+      if (x.status !== 200) { done(new Error('HTTP ' + x.status)); return; }
+      done(null, x.responseText);
     };
     x.ontimeout = x.onerror = function () { if (!over) { over = true; done(new Error('no connection')); } };
     x.send();
@@ -212,10 +228,34 @@ var Data = (function () {
 
   // MARK: - Exchange rates
 
-  /** The dollar and the euro in Colombian pesos, from the free daily table (no key, updates once a day). */
-  var rates = null, ratesAt = 0, fetchingRates = false;
+  /**
+   * The dollar and the euro in Colombian pesos, from XE's own converter (the rate XE shows). XE's page carries no
+   * CORS header, so it comes through Jina Reader, which adds one. If that fails, a free daily table stands in, so
+   * the card never goes blank.
+   */
+  var rates = null, ratesAt = 0, ratesSource = '', fetchingRates = false;
 
-  function parseRates(o) {
+  /** "3,560.03" or "3.560,03" → 3560.03. */
+  function rateNumber(s) {
+    s = s.replace(/[^0-9.,]/g, '');
+    if (s.indexOf(',') >= 0) s = s.replace(/,/g, '');
+    return parseFloat(s);
+  }
+
+  /** The XE converter page for one currency, through Jina Reader: done(error, pesos per unit). */
+  function xeRate(code, done) {
+    var page = 'https://www.xe.com/currencyconverter/convert/?Amount=1&From=' + code + '&To=COP';
+    getText('https://r.jina.ai/' + page, function (err, text) {
+      if (err) { done(err); return; }
+      var m = new RegExp('1\\s*' + code + '\\s*=\\s*([0-9][0-9.,]*)\\s*COP').exec(text);
+      var v = m && rateNumber(m[1]);
+      if (!v || isNaN(v)) { done(new Error('XE: no ' + code + ' rate')); return; }
+      done(null, v);
+    });
+  }
+
+  /** The free daily table (open.er-api.com), the fallback when XE cannot be reached. */
+  function parseTable(o) {
     var r = o && o.rates;
     if (!r || !r.COP || !r.EUR || !r.USD) return null;
     return {usdCop: r.COP / r.USD, eurCop: r.COP / r.EUR};
@@ -223,21 +263,41 @@ var Data = (function () {
 
   (function () {
     var r = stored('rates');
-    if (r && r.body) { rates = parseRates(r.body); if (rates) ratesAt = r.at; }
+    if (!r) return;
+    if (r.rates && r.rates.usdCop) { rates = r.rates; ratesAt = r.at; ratesSource = r.source || ''; }
+    else if (r.body) { rates = parseTable(r.body); if (rates) ratesAt = r.at; }
   })();
 
   function refreshRates() {
     var now = Date.now();
     if (fetchingRates || (now - ratesAt < 30 * 60000 && now >= ratesAt)) return;
     fetchingRates = true;
-    get('https://open.er-api.com/v6/latest/USD', {}, function (err, body) {
-      fetchingRates = false;
-      if (err || !parseRates(body)) return;
-      rates = parseRates(body);
-      ratesAt = Date.now();
-      store('rates', {body: body, at: ratesAt});
-      changed();
-    });
+    var got = {}, left = 2;
+    function finish() {
+      left--;
+      if (left) return;
+      if (got.usdCop && got.eurCop) {
+        fetchingRates = false;
+        rates = got;
+        ratesAt = Date.now();
+        ratesSource = 'XE';
+        store('rates', {rates: rates, at: ratesAt, source: ratesSource});
+        changed();
+        return;
+      }
+      get('https://open.er-api.com/v6/latest/USD', {}, function (err, body) {
+        fetchingRates = false;
+        var r = err ? null : parseTable(body);
+        if (!r) return;
+        rates = r;
+        ratesAt = Date.now();
+        ratesSource = '';
+        store('rates', {rates: rates, at: ratesAt, source: ratesSource});
+        changed();
+      });
+    }
+    xeRate('USD', function (err, v) { if (!err) got.usdCop = v; finish(); });
+    xeRate('EUR', function (err, v) { if (!err) got.eurCop = v; finish(); });
   }
 
   // MARK: - Picks (TMDB)
@@ -561,6 +621,7 @@ var Data = (function () {
     activeCoins: activeCoins,
     get rates() { return rates; },
     get ratesAt() { return ratesAt; },
+    get ratesSource() { return ratesSource; },
     /** Pesos have no cents in practice; the rate table's own precision would only add noise. */
     fx: function (v) { return isNaN(v) ? '—' : fmt(v, v >= 1000 ? 0 : 2); },
     hasKey: function () { return !!KEY; },

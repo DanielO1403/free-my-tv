@@ -463,8 +463,10 @@
     line = el('div', 'row', card);
     el('span', 'code', line, 'EUR / COP');
     el('span', 'val', line, Data.fx(r.eurCop));
-    var stale = Data.staleness(Data.ratesAt, 12 * 3600000);
-    if (stale) el('div', 'note', card, stale);
+    var stale = Data.staleness(Data.ratesAt, 12 * 3600000), note = [];
+    if (Data.ratesSource) note.push(Data.ratesSource);
+    if (stale) note.push(stale);
+    if (note.length) el('div', 'note', card, note.join(' · '));
     layoutTop();
   }
 
